@@ -1,5 +1,7 @@
 # rocq2mbt — Rocq 与 MoonBit 的提取与互操作
 
+**中文** | [English](README.en.md)
+
 由三部分组成：
 
 1. **Rocq 外部插件** `rocq-mbt.plugin`：通过 Rocq 9.4 新增的可扩展 extraction API
@@ -15,6 +17,9 @@
 From RocqMbt Require Import Prelude.     (* 或 MoonBit / ExtrMoonBitBasic / ExtrMoonBitPrim *)
 Extraction "pkg/out.mbt" my_function.
 ```
+
+**完整的安装与使用说明见 [docs/USAGE.md](docs/USAGE.md)**：包括安装步骤、三个可运行的
+快速上手示例、各模块和命令的参考，以及常见问题。
 
 ## 环境
 
