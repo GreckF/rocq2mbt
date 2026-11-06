@@ -670,7 +670,7 @@ fn Gen::emit_accessors(self : Gen, name : String, rocq : String, params : Array[
         }
       }
     }
-    Enum([c]) if c.args.length() == 1 && !(c.args[0].is_mut) => {
+    Enum([c]) | ErrorType([c]) if c.args.length() == 1 && !(c.args[0].is_mut) => {
       // single-constructor wrapper: constructor and eliminator
       let a = c.args[0]
       let r = try self.rty(a.ty, env) catch {

@@ -402,6 +402,12 @@ let raise_result r shape t =
   let n = match shape with Func n -> n | _ -> 0 in
   let _, res = split_arrows n t in
   match result_parts res with
+  | Some (_, (Tdummy _ | Tunknown | Taxiom)) ->
+    CErrors.user_err Pp.(str "Extract MoonBit Raise: the error type of " ++
+                         Printer.pr_global r.glob ++
+                         str " is erased by extraction (e.g. an inductive type with a single" ++
+                         str " constructor without arguments); MoonBit needs an error type with" ++
+                         str " computational content.")
   | Some p -> p
   | None ->
     CErrors.user_err Pp.(str "Extract MoonBit Raise: " ++ Printer.pr_global r.glob ++
