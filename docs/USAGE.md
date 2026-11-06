@@ -43,7 +43,7 @@ export ROCQ2MBT=/path/to/rocq2mbt
 | --- | --- | --- |
 | Rocq 插件 `rocq-mbt.plugin` | `src/` | 注册提取语言 `MoonBit`，提供 `Extract MoonBit ...` 命令 |
 | Rocq 库 `RocqMbt` | `theories/` | `MoonBit`、`ExtrMoonBitBasic`、`ExtrMoonBitPrim`、`Prelude` 四个模块 |
-| MoonBit 运行时 `rocq2mbt/rocqrt` | `mbt/rocqrt/` | 原生 63 位整数、浮点、持久数组的实现，提取出的代码在用到原生类型时依赖它 |
+| MoonBit 运行时 `GreckF/rocqrt` | `mbt/rocqrt/` | 原生 63 位整数、浮点、持久数组的实现，提取出的代码在用到原生类型时依赖它 |
 | MoonBit 工具 `mbti2rocq` | `mbt/mbti2rocq/` | `.mbti` → Rocq 文件 |
 
 ## 2. 环境要求
@@ -299,7 +299,7 @@ moon run cmd/main --target native     # 输出 55
 
 `Prelude` 提供 MoonBit 内建类型（`Int`、`String`、`Array` …）、`Result`、
 trait 对应的类，并包含 Rocq 原生类型的提取设置。用到这些时，提取出的代码依赖运行时
-包 `rocq2mbt/rocqrt`。
+包 `GreckF/rocqrt`。
 
 ```bash
 mkdir -p ~/prelude-demo/lib && cd ~/prelude-demo
@@ -383,7 +383,7 @@ name = "me/demo"
 version = "0.1.0"
 
 import {
-  "rocq2mbt/rocqrt@0.1.0",
+  "GreckF/rocqrt@0.1.0",
 }
 ```
 
@@ -391,7 +391,7 @@ import {
 
 ```text
 import {
-  "rocq2mbt/rocqrt" @rocqrt,
+  "GreckF/rocqrt" @rocqrt,
 }
 ```
 
@@ -442,7 +442,7 @@ name = "me/interop"
 version = "0.1.0"
 
 import {
-  "rocq2mbt/rocqrt@0.1.0",
+  "GreckF/rocqrt@0.1.0",
 }
 ```
 
@@ -568,7 +568,7 @@ rocq2mbt_c -R . Interop Use.v
 
 ```text
 import {
-  "rocq2mbt/rocqrt" @rocqrt,
+  "GreckF/rocqrt" @rocqrt,
   "me/interop/geom" @geom,
 }
 ```
@@ -911,9 +911,9 @@ Rocq 找不到插件。检查是否设置了
 `%nat`、`%uint63`，或者把作用域关掉。另外 `compare`、`length` 等名字可能被后导入的模块
 覆盖，必要时写全名，如 `PrimInt63.compare`。
 
-**MoonBit 报 `@rocqrt` 未定义 / 找不到包 `rocq2mbt/rocqrt`**
-提取出的包的 `moon.pkg` 必须写 `import { "rocq2mbt/rocqrt" @rocqrt }`，模块的
-`moon.mod` 里要导入 `rocq2mbt/rocqrt@0.1.0`，并且 `moon.work` 中包含 `rocqrt` 的路径。
+**MoonBit 报 `@rocqrt` 未定义 / 找不到包 `GreckF/rocqrt`**
+提取出的包的 `moon.pkg` 必须写 `import { "GreckF/rocqrt" @rocqrt }`，模块的
+`moon.mod` 里要导入 `GreckF/rocqrt@0.1.0`，并且 `moon.work` 中包含 `rocqrt` 的路径。
 
 **MoonBit 报 `@geom` 等外部包未定义**
 导入别名要和 `mbti2rocq --alias`（默认是包路径的最后一段）一致。

@@ -43,7 +43,7 @@ export ROCQ2MBT=/path/to/rocq2mbt
 | --- | --- | --- |
 | Rocq plugin `rocq-mbt.plugin` | `src/` | Registers the extraction language `MoonBit` and provides the `Extract MoonBit ...` commands |
 | Rocq library `RocqMbt` | `theories/` | Four modules: `MoonBit`, `ExtrMoonBitBasic`, `ExtrMoonBitPrim`, `Prelude` |
-| MoonBit runtime `rocq2mbt/rocqrt` | `mbt/rocqrt/` | Implementation of native 63-bit integers, floats and persistent arrays; extracted code depends on it when it uses native types |
+| MoonBit runtime `GreckF/rocqrt` | `mbt/rocqrt/` | Implementation of native 63-bit integers, floats and persistent arrays; extracted code depends on it when it uses native types |
 | MoonBit tool `mbti2rocq` | `mbt/mbti2rocq/` | `.mbti` → Rocq file |
 
 ## 2. Requirements
@@ -299,7 +299,7 @@ Any of the `wasm-gc`, `wasm` and `native` backends works.
 
 `Prelude` provides MoonBit built-in types (`Int`, `String`, `Array` ...), `Result`,
 classes corresponding to traits, and includes the extraction setup for Rocq native types. When these are used, the extracted code depends on the runtime
-package `rocq2mbt/rocqrt`.
+package `GreckF/rocqrt`.
 
 ```bash
 mkdir -p ~/prelude-demo/lib && cd ~/prelude-demo
@@ -383,7 +383,7 @@ name = "me/demo"
 version = "0.1.0"
 
 import {
-  "rocq2mbt/rocqrt@0.1.0",
+  "GreckF/rocqrt@0.1.0",
 }
 ```
 
@@ -391,7 +391,7 @@ import {
 
 ```text
 import {
-  "rocq2mbt/rocqrt" @rocqrt,
+  "GreckF/rocqrt" @rocqrt,
 }
 ```
 
@@ -442,7 +442,7 @@ name = "me/interop"
 version = "0.1.0"
 
 import {
-  "rocq2mbt/rocqrt@0.1.0",
+  "GreckF/rocqrt@0.1.0",
 }
 ```
 
@@ -568,7 +568,7 @@ here `@geom`), and also import the runtime:
 
 ```text
 import {
-  "rocq2mbt/rocqrt" @rocqrt,
+  "GreckF/rocqrt" @rocqrt,
   "me/interop/geom" @geom,
 }
 ```
@@ -911,9 +911,9 @@ After `Open Scope uint63_scope`, number literals are interpreted as `int`. Add a
 `%nat` or `%uint63`, or close the scope. Also, names like `compare` and `length` may be shadowed by modules imported later;
 use the full name when necessary, e.g. `PrimInt63.compare`.
 
-**MoonBit reports `@rocqrt` undefined / cannot find package `rocq2mbt/rocqrt`**
-The `moon.pkg` of the extracted package must contain `import { "rocq2mbt/rocqrt" @rocqrt }`, the module's
-`moon.mod` must import `rocq2mbt/rocqrt@0.1.0`, and `moon.work` must include the path of `rocqrt`.
+**MoonBit reports `@rocqrt` undefined / cannot find package `GreckF/rocqrt`**
+The `moon.pkg` of the extracted package must contain `import { "GreckF/rocqrt" @rocqrt }`, the module's
+`moon.mod` must import `GreckF/rocqrt@0.1.0`, and `moon.work` must include the path of `rocqrt`.
 
 **MoonBit reports an external package such as `@geom` as undefined**
 The import alias must match `mbti2rocq --alias` (by default the last segment of the package path).

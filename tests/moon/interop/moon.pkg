@@ -1,4 +1,4 @@
 import {
-  "rocq2mbt/rocqrt" @rocqrt,
+  "GreckF/rocqrt" @rocqrt,
   "rocq2mbt/tests/mlib" @mlib,
 }

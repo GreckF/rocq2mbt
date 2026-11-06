@@ -58,7 +58,7 @@ Using the plugin without installing it:
 | `theories/ExtrMoonBitBasic.v` | `bool/sumbool → Bool`, `option → Option`, `unit → Unit`, `prod → tuples` |
 | `theories/ExtrMoonBitPrim.v` | `int → UInt64`, `float → Double`, `array → @rocqrt.PArray`, `string → String`, and all primitive operations |
 | `theories/Prelude.v` | `Result`, MoonBit builtin types (`Int`, `String`, `Array`, ...), trait classes `Eq/Compare/Show/Hash` and instances |
-| `mbt/rocqrt/` | MoonBit runtime (module `rocq2mbt/rocqrt`): Uint63, Float64, diff-array persistent arrays |
+| `mbt/rocqrt/` | MoonBit runtime (module `GreckF/rocqrt`): Uint63, Float64, diff-array persistent arrays |
 | `mbt/mbti2rocq/` | MoonBit tool: `.mbti` → Rocq |
 | `tests/*.v` | Extraction tests, written to `tests/moon/<pkg>/` |
 | `tests/moon/` | MoonBit test module (`moon.work` brings in `rocqrt`); `mlib` is the interop sample library |
@@ -118,8 +118,8 @@ Using the plugin without installing it:
   (instance methods all use generic axioms such as `Builtin.equal`, which dispatch
   statically after extraction, at a concrete type or under a bound).
 
-The extracted MoonBit package must `import { "rocq2mbt/rocqrt" @rocqrt }` in its `moon.pkg`,
-and its module must depend on `rocq2mbt/rocqrt` (this repository uses `moon.work`).
+The extracted MoonBit package must `import { "GreckF/rocqrt" @rocqrt }` in its `moon.pkg`,
+and its module must depend on `GreckF/rocqrt` (this repository uses `moon.work`).
 
 ## mbti2rocq
 

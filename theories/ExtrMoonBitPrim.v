@@ -6,7 +6,7 @@
     are printed natively by the plugin.
 
     The generated code needs the runtime package; in its [moon.pkg]:
-      import { "rocq2mbt/rocqrt" @rocqrt } *)
+      import { "GreckF/rocqrt" @rocqrt } *)
 
 From RocqMbt Require Export ExtrMoonBitBasic.
 From Corelib Require Import PrimInt63 CarryType PrimFloat FloatClass PrimArray PrimString.

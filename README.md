@@ -52,7 +52,7 @@ bash tests/run.sh            # 全部测试（见下文）
 | `theories/ExtrMoonBitBasic.v` | `bool/sumbool → Bool`、`option → Option`、`unit → Unit`、`prod → 元组` |
 | `theories/ExtrMoonBitPrim.v` | `int → UInt64`、`float → Double`、`array → @rocqrt.PArray`、`string → String` 及全部原生运算 |
 | `theories/Prelude.v` | `Result`、MoonBit 内建类型（`Int`、`String`、`Array` …）、trait 类 `Eq/Compare/Show/Hash` 与实例 |
-| `mbt/rocqrt/` | MoonBit 运行时（模块 `rocq2mbt/rocqrt`）：Uint63、Float64、diff-array 持久数组 |
+| `mbt/rocqrt/` | MoonBit 运行时（模块 `GreckF/rocqrt`）：Uint63、Float64、diff-array 持久数组 |
 | `mbt/mbti2rocq/` | MoonBit 工具：`.mbti` → Rocq |
 | `tests/*.v` | 提取用例，输出到 `tests/moon/<pkg>/` |
 | `tests/moon/` | MoonBit 测试模块（`moon.work` 引入 `rocqrt`）；`mlib` 是互操作示例库 |
@@ -110,8 +110,8 @@ bash tests/run.sh            # 全部测试（见下文）
   trait 类 `Eq Compare Show Hash` 及内建类型实例（实例方法统一用
   `Builtin.equal` 等泛型公理，提取后在具体类型或带约束处静态分派）。
 
-提取后的 MoonBit 包需要在 `moon.pkg` 里 `import { "rocq2mbt/rocqrt" @rocqrt }`，
-模块层面依赖 `rocq2mbt/rocqrt`（本仓库用 `moon.work`）。
+提取后的 MoonBit 包需要在 `moon.pkg` 里 `import { "GreckF/rocqrt" @rocqrt }`，
+模块层面依赖 `GreckF/rocqrt`（本仓库用 `moon.work`）。
 
 ## mbti2rocq
 
