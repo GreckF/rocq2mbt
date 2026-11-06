@@ -8,12 +8,12 @@ pub(all) enum List[A] {
 pub type String0 = String
 
 pub fn fact(n : Int) -> Int {
-  ((fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } }))(fn() { (fn(n) { n + 1 })(0) }, fn(p) { (fn(a) { fn(b) { a * b } })(n)(fact(p)) }, n)
+  (fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } })(fn() { (fn(n) { n + 1 })(0) }, fn(p) { (fn(a) { fn(b) { a * b } })(n)(fact(p)) }, n)
 }
 
 pub fn fib(n : Int) -> Int {
-  ((fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } }))(fn() { 0 }, fn(p) {
-    ((fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } }))(fn() { (fn(n) { n + 1 })(0) }, fn(q) { (fn(a) { fn(b) { a + b } })(fib(p))(fib(q)) }, p)
+  (fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } })(fn() { 0 }, fn(p) {
+    (fn(fO, fS, n) { if n == 0 { fO() } else { fS(n - 1) } })(fn() { (fn(n) { n + 1 })(0) }, fn(q) { (fn(a) { fn(b) { a + b } })(fib(p))(fib(q)) }, p)
   }, n)
 }
 

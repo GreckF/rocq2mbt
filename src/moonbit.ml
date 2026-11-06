@@ -58,8 +58,12 @@ let keywords =
       "Char"; "String"; "Double"; "Float"; "Unit"; "Bytes"; "Array";
       "FixedArray"; "Option"; "Result"; "Ref"; "Map"; "Error"; "Json";
       "abort"; "panic"; "ignore"; "not"; "println"; "print"; "physical_equal";
+      "Eq"; "Compare"; "Show"; "Hash"; "Default"; "Debug"; "ToJson"; "FromJson";
+      "Logger"; "Hasher"; "Add"; "Sub"; "Mul"; "Div"; "Neg"; "Mod"; "BitAnd"; "BitOr";
+      "BitXOr"; "Shl"; "Shr"; "Iter"; "Iter2"; "ArrayView"; "StringView"; "BytesView";
       (* runtime support of the generated code *)
-      "RocqAny"; "RocqLazy"; "rocq_magic"; "rocq_lazy"; "rocq_force" ])
+      "RocqAny"; "RocqLazy"; "rocq_magic"; "rocq_lazy"; "rocq_force";
+      "rocq_result"; "rocq_v"; "rocq_e"; "rocqrt" ])
     Id.Set.empty
 
 let unquote s = String.map (fun c -> if c == '\'' then '_' else c) s
@@ -144,6 +148,25 @@ let string_lit s =
 
 let char_lit c = "'" ^ escape_char ~quote:'\'' c ^ "'"
 
+let float_lit f =
+  match Float64.to_hex_string f with
+  | "nan" -> "(0.0 / 0.0)"
+  | "infinity" -> "(1.0 / 0.0)"
+  | "neg_infinity" -> "(-1.0 / 0.0)"
+  | s ->
+    (* OCaml prints 0x1.8p+3, MoonBit wants 0x1.8p3 *)
+    let b = Buffer.create (String.length s) in
+    String.iteri (fun i c ->
+        if not (c = '+' && i > 0 && s.[i - 1] = 'p') then Buffer.add_char b c) s;
+    let s = Buffer.contents b in
+    (* MoonBit needs a fractional part: 0x1p3 -> 0x1.0p3 *)
+    let s = match String.index_opt s 'p' with
+      | Some i when not (String.contains s '.') ->
+        String.sub s 0 i ^ ".0" ^ String.sub s i (String.length s - i)
+      | _ -> s
+    in
+    if s.[0] = '-' then "(" ^ s ^ ")" else s
+
 (*s Type variables are named positionally: A, B, ..., Z, A1, ..., skipping
     the names of types occurring in the extracted code (collected during the
     dry run). *)
@@ -207,7 +230,9 @@ let rec pp_type table t : string =
     pp_type table (type_subst_list l (GlobRef.Map.find r.glob !inline_aliases))
   | Tglob (r, []) -> pp_global_str table Type r
   | Tglob (r, l) ->
-    pp_global_str table Type r ^ "[" ^ String.concat ", " (List.map (pp_type table) l) ^ "]"
+    let s = pp_global_str table Type r in
+    if String.equal s "(,)" then "(" ^ String.concat ", " (List.map (pp_type table) l) ^ ")"
+    else s ^ "[" ^ String.concat ", " (List.map (pp_type table) l) ^ "]"
   | Tarr (t1, t2) -> "(" ^ pp_type table t1 ^ ") -> " ^ pp_type table t2
   | Tdummy _ -> "Unit"
   | Tunknown -> need_any := true; "RocqAny"
@@ -229,6 +254,109 @@ type shape =
   | Value              (* [pub let c : T = ...], referenced as [c] *)
   | Thunk              (* [pub fn[..] c() -> T], referenced as [c()] *)
   | Func of int        (* [pub fn f(x1, .., xn) -> T], n >= 1 *)
+  | Extern of extern   (* realized by [Extract MoonBit Function] *)
+
+and extern = {
+  template : string;
+  dicts : bool list;   (* one entry per consumed argument: is it a dictionary? *)
+}
+
+(*s Call templates: [$i] is the i-th (non-dictionary) argument. *)
+
+type piece = Lit of string | Arg of int
+
+let parse_template s : piece list =
+  let n = String.length s in
+  let buf = Buffer.create n in
+  let out = ref [] in
+  let flush () =
+    if Buffer.length buf > 0 then (out := Lit (Buffer.contents buf) :: !out; Buffer.clear buf) in
+  let i = ref 0 in
+  while !i < n do
+    if s.[!i] = '$' && !i + 1 < n && '0' <= s.[!i + 1] && s.[!i + 1] <= '9' then begin
+      flush ();
+      let j = ref (!i + 1) in
+      while !j < n && '0' <= s.[!j] && s.[!j] <= '9' do incr j done;
+      out := Arg (int_of_string (String.sub s (!i + 1) (!j - !i - 1))) :: !out;
+      i := !j
+    end else (Buffer.add_char buf s.[!i]; incr i)
+  done;
+  flush ();
+  List.rev !out
+
+let has_placeholder s = List.exists (function Arg _ -> true | Lit _ -> false) (parse_template s)
+
+let template_arity s =
+  List.fold_left (fun m p -> match p with Arg i -> max m (i + 1) | Lit _ -> m) 0 (parse_template s)
+
+(* Arguments may be duplicated or delayed by the template: bind them first. *)
+let template_needs_binding s =
+  let args = List.filter_map (function Arg i -> Some i | Lit _ -> None) (parse_template s) in
+  let rec has_fn i = i + 3 <= String.length s && (String.equal (String.sub s i 3) "fn(" || has_fn (i + 1)) in
+  List.length args <> List.length (List.sort_uniq compare args) || has_fn 0
+
+(* Does this expression need parentheses before a postfix [(..)], [.f] or
+   [[..]]?  Yes for multi-line code, closures, blocks, and anything with a
+   space or a leading minus at nesting depth 0. *)
+let needs_paren_postfix (c : code) =
+  match c with
+  | [l] ->
+    let n = String.length l in
+    let starts p = n >= String.length p && String.equal (String.sub l 0 (String.length p)) p in
+    if n = 0 || starts "fn(" || starts "fn " || starts "{" || starts "-" then true
+    else
+      let depth = ref 0 and quoted = ref false and space = ref false in
+      String.iteri (fun i ch ->
+          if !quoted then (if ch = '"' && (i = 0 || l.[i - 1] <> '\\') then quoted := false)
+          else match ch with
+            | '"' -> quoted := true
+            | '(' | '[' | '{' -> incr depth
+            | ')' | ']' | '}' -> decr depth
+            | ' ' when !depth = 0 -> space := true
+            | _ -> ()) l;
+      !space
+  | _ -> true
+
+(* A custom string used as the head of an application. *)
+let paren_custom s = if needs_paren_postfix [s] then paren [s] else [s]
+
+let apply_template s (args : code list) : code =
+  let args = Array.of_list args in
+  let rec go acc = function
+    | [] -> acc
+    | Lit l :: rest -> go (acc ^^ [l]) rest
+    | Arg i :: rest ->
+      if i >= Array.length args then
+        CErrors.user_err Pp.(str "MoonBit template " ++ qs s ++ str " uses a missing argument.");
+      let postfix = match rest with
+        | Lit l :: _ -> String.length l > 0 && (l.[0] = '(' || l.[0] = '.' || l.[0] = '[')
+        | _ -> false
+      in
+      let a = args.(i) in
+      let a = if postfix && needs_paren_postfix a then paren a else a in
+      go (acc ^^ a) rest
+  in
+  go [""] (parse_template s)
+
+(* A constructor or constant given by a custom string, applied to [args]. *)
+let custom_app s (args : code list) : code =
+  if String.equal s "(,)" then paren (concat_with ", " args)
+  else if has_placeholder s then apply_template s args
+  else match args with [] -> [s] | _ -> call [s] args
+
+let is_trait_type = function
+  | Tglob (r, _) -> Option.has_some (Mbt_table.find_trait r.glob)
+  | _ -> false
+
+let extern_of_type (f : Mbt_table.extern_fun) t =
+  let n = match f.arity with Some n -> n | None -> template_arity f.template in
+  let rec go k t = match t with
+    | Tarr (a, b) when is_trait_type a -> true :: go k b
+    | _ when k = 0 -> []
+    | Tarr (_, b) -> false :: go (k - 1) b
+    | _ -> List.init k (fun _ -> false)
+  in
+  { template = f.template; dicts = go n t }
 
 let shapes : (global * shape) list GlobRef.Map.t ref = ref GlobRef.Map.empty
 
@@ -236,13 +364,21 @@ let find_shape r =
   try
     let l = GlobRef.Map.find r.glob !shapes in
     snd (List.find (fun (r', _) -> InfvInst.equal r.inst r'.inst) l)
-  with Not_found -> Value
+  with Not_found ->
+    match Mbt_table.find_fun r.glob with
+    | Some f ->
+      let n = match f.arity with Some n -> n | None -> template_arity f.template in
+      Extern { template = f.template; dicts = List.init n (fun _ -> false) }
+    | None -> Value
 
 let add_shape r s =
   let l = try GlobRef.Map.find r.glob !shapes with Not_found -> [] in
   shapes := GlobRef.Map.add r.glob ((r, s) :: l) !shapes
 
 let compute_shape ~in_fix r a t =
+  match Mbt_table.find_fun r.glob with
+  | Some f -> Extern (extern_of_type f t)
+  | None ->
   if is_custom r then (if type_maxvar t > 0 then Thunk else Value)
   else
     let n = min (nb_lams a) (nb_arrows t) in
@@ -250,10 +386,45 @@ let compute_shape ~in_fix r a t =
     else if in_fix || type_maxvar t > 0 then Thunk
     else Value
 
+(*s Functions extracted as [raise] functions ([Extract MoonBit Raise]). *)
+
+let is_raise r = Mbt_table.is_raise r.glob
+
+(* Inductive types used as error types of raise functions: printed as
+   [suberror]s. *)
+let error_types = ref GlobRef.Set.empty
+
+let result_parts t = match t with
+  | Tglob (r, [ok; err]) when Rocqlib.check_ref "rocq2mbt.result.type" r.glob -> Some (ok, err)
+  | _ -> None
+
+let raise_result r shape t =
+  let n = match shape with Func n -> n | _ -> 0 in
+  let _, res = split_arrows n t in
+  match result_parts res with
+  | Some p -> p
+  | None ->
+    CErrors.user_err Pp.(str "Extract MoonBit Raise: " ++ Printer.pr_global r.glob ++
+                         str " must return a RocqMbt.Prelude.Result.")
+
+let register_term ~in_fix r a t =
+  let shape = compute_shape ~in_fix r a t in
+  add_shape r shape;
+  if is_raise r then begin
+    (match shape with
+     | Func _ | Thunk -> ()
+     | _ -> CErrors.user_err Pp.(str "Extract MoonBit Raise: " ++ Printer.pr_global r.glob ++
+                                 str " must be a function defined in Rocq."));
+    match raise_result r shape t with
+    | _, Tglob (e, []) when (match e.glob with GlobRef.IndRef _ -> true | _ -> false) ->
+      error_types := GlobRef.Set.add e.glob !error_types
+    | _ -> ()
+  end
+
 let rec register_decl = function
-  | Dterm (r, a, t) -> add_shape r (compute_shape ~in_fix:false r a t)
+  | Dterm (r, a, t) -> register_term ~in_fix:false r a t
   | Dfix (rv, defs, typs) ->
-    Array.iteri (fun i r -> add_shape r (compute_shape ~in_fix:true r defs.(i) typs.(i))) rv
+    Array.iteri (fun i r -> register_term ~in_fix:true r defs.(i) typs.(i)) rv
   | Dind { ind_kind = Singleton; ind_packets = [| p |] }
     when not (p.ip_logical || is_custom p.ip_typename_ref) ->
     (match p.ip_types.(0) with
@@ -276,7 +447,7 @@ let thunk_locals = ref Id.Set.empty
 
 let rec is_simple = function
   | MLrel _ | MLdummy _ | MLstring _ | MLuint _ | MLfloat _ | MLlam _ -> true
-  | MLglob r -> (match find_shape r with Thunk -> false | _ -> true)
+  | MLglob r -> (match find_shape r with Thunk | Extern _ -> false | _ -> true)
   | MLcons (_, _, l) -> List.for_all is_simple l
   | MLmagic a -> is_simple a
   | _ -> false
@@ -309,9 +480,9 @@ let rec pp_expr table env (e : ml_ast) : code =
     else if is_native_string c then [string_lit (get_native_string c)]
     else
       let head = pp_cons table r in
-      let v = match args with
-        | [] -> [head]
-        | _ -> call [head] (List.map (pp_expr table env) args)
+      let args = List.map (pp_expr table env) args in
+      let v = if is_inline_custom r then custom_app head args
+        else match args with [] -> [head] | _ -> call [head] args
       in
       if is_coinductive (State.get_table table) r then begin
         need_lazy := true;
@@ -326,7 +497,7 @@ let rec pp_expr table env (e : ml_ast) : code =
       ["fn(" ^ String.concat ", " (List.rev_map Id.to_string ids) ^ ") "]
       ^^ block [pp_body table env' body]
     in
-    call (paren [find_custom_match pv])
+    call (paren_custom (find_custom_match pv))
       (Array.to_list (Array.map branch pv) @ [pp_expr table env t])
   | MLcase (typ, t, pv) ->
     let scrut = pp_expr table env t in
@@ -350,51 +521,73 @@ let rec pp_expr table env (e : ml_ast) : code =
   | MLdummy _ -> ["()"]
   | MLaxiom s -> ["abort(" ^ string_lit ("AXIOM TO BE REALIZED (" ^ s ^ ")") ^ ")"]
   | MLmagic a -> need_magic := true; call ["rocq_magic"] [pp_expr table env a]
-  | MLuint _ -> ["abort(\"EXTRACTION OF UINT NOT IMPLEMENTED\")"]
-  | MLfloat _ -> ["abort(\"EXTRACTION OF FLOAT NOT IMPLEMENTED\")"]
+  | MLuint i -> [Uint63.to_string i ^ "UL"]
+  | MLfloat f -> [float_lit f]
   | MLstring s -> [string_lit (Pstring.to_string s)]
-  | MLparray _ -> ["abort(\"EXTRACTION OF ARRAY NOT IMPLEMENTED\")"]
+  | MLparray (a, def) ->
+    call ["@rocqrt.PArray::of_array"]
+      [["["] ^^ concat_with ", " (Array.to_list (Array.map (pp_expr table env) a)) ^^ ["]"];
+       pp_expr table env def]
 
 (* A global used as a value (not applied). *)
 and pp_global_value table env r : code =
-  if is_inline_custom r then [find_custom r]
-  else
-    let name = Common.pp_global table Term r in
-    match find_shape r with
-    | Value -> [name]
-    | Thunk -> [name ^ "()"]
-    | Func n ->
-      let xs, _ = fresh_names env "x" n in
-      curried_lams xs [name ^ "(" ^ String.concat ", " xs ^ ")"]
+  if is_inline_custom r && not (Option.has_some (Mbt_table.find_fun r.glob)) then [find_custom r]
+  else pp_app table env (MLglob r) []
+
+(* [try f(..) catch ..]: turns a raise function call back into a Result. *)
+and wrap_try c =
+  ["(try "] ^^ c ^^ [" catch { rocq_e => Result::Err(rocq_e) } noraise { rocq_v => Result::Ok(rocq_v) })"]
+
+(* Call of a known function consuming [arity] arguments; [keep] selects
+   those passed to [emit].  Missing arguments are eta-expanded; arguments
+   are let-bound when [bind] says so (or for partial applications). *)
+and pp_known_call table env ~arity ~keep ~emit ~bind ~raise_ args : code =
+  let curried head args =
+    List.fold_left (fun h a -> call h [pp_expr table env a]) head args
+  in
+  let k = List.length args in
+  let now, later = if k >= arity then CList.chop arity args else args, [] in
+  let bound, env1 = fresh_names env "a" (List.length now) in
+  let lets, actuals =
+    List.split (List.map2 (fun a x ->
+        if (not bind && k >= arity) || is_simple a then [], pp_expr table env a
+        else [["let " ^ x ^ " = "] ^^ pp_expr table env a], [x])
+        now bound)
+  in
+  let xs, _ = fresh_names env1 "x" (max 0 (arity - k)) in
+  let all = actuals @ List.map (fun x -> [x]) xs in
+  let kept = List.filteri (fun i _ -> List.nth keep i) all in
+  let res = emit kept in
+  let res = if raise_ then wrap_try res else res in
+  let body = curried_lams xs res in
+  let body = if List.is_empty later then body else curried (paren body) later in
+  let lets = List.concat lets in
+  if List.is_empty lets then body else block (lets @ [body])
 
 and pp_app table env f args : code =
   let curried head args =
-    List.fold_left (fun h a -> call h [a]) head (List.map (pp_expr table env) args)
+    List.fold_left (fun h a -> call h [pp_expr table env a]) head args
   in
   match f with
-  | MLglob r when not (is_inline_custom r) ->
-    let name = Common.pp_global table Term r in
+  | MLglob r when not (is_inline_custom r) || Option.has_some (Mbt_table.find_fun r.glob) ->
+    let raise_ = is_raise r in
     begin match find_shape r with
-      | Func n when List.length args >= n ->
-        let now, later = CList.chop n args in
-        curried (call [name] (List.map (pp_expr table env) now)) later
+      | Extern e ->
+        let n = List.length e.dicts in
+        pp_known_call table env ~arity:n ~keep:(List.map not e.dicts)
+          ~emit:(apply_template e.template)
+          ~bind:(template_needs_binding e.template) ~raise_:false args
       | Func n ->
-        (* partial application: bind non-trivial arguments, then eta-expand *)
-        let k = List.length args in
-        let bound, env1 = fresh_names env "a" k in
-        let lets, actuals =
-          List.split (List.map2 (fun a x ->
-              if is_simple a then [], pp_expr table env a
-              else [["let " ^ x ^ " = "] ^^ pp_expr table env a], [x])
-              args bound)
-        in
-        let xs, _ = fresh_names env1 "x" (n - k) in
-        let body = curried_lams xs (call [name] (actuals @ List.map (fun x -> [x]) xs)) in
-        let lets = List.concat lets in
-        if List.is_empty lets then body else block (lets @ [body])
-      | Thunk -> curried [name ^ "()"] args
-      | Value -> curried [name] args
+        let name = Common.pp_global table Term r in
+        pp_known_call table env ~arity:n ~keep:(List.init n (fun _ -> true))
+          ~emit:(fun kept -> call [name] kept) ~bind:false ~raise_ args
+      | Thunk ->
+        let name = Common.pp_global table Term r in
+        let head = if raise_ then wrap_try [name ^ "()"] else [name ^ "()"] in
+        curried (if raise_ && not (List.is_empty args) then paren head else head) args
+      | Value -> curried [Common.pp_global table Term r] args
     end
+  | MLglob r -> curried (paren_custom (find_custom r)) args
   | MLfix (i, ids, defs) ->
     (* [(fix f x := ..) a] becomes [{ letrec f = ..; f(a) }] *)
     let ids', env' = push (List.rev (Array.to_list ids)) env in
@@ -402,7 +595,7 @@ and pp_app table env f args : code =
     let stmts = pp_fix table env' names defs in
     let last = curried (pp_expr table env' (MLrel (Array.length defs - i))) args in
     block (stmts @ [last])
-  | MLglob _ | MLrel _ | MLapp _ | MLmagic _ -> curried (pp_expr table env f) args
+  | MLrel _ | MLapp _ | MLmagic _ -> curried (pp_expr table env f) args
   | _ -> curried (paren (pp_expr table env f)) args
 
 and pp_branch table env (ids, p, body) : code =
@@ -410,9 +603,9 @@ and pp_branch table env (ids, p, body) : code =
   pp_pattern table (List.rev ids') env' p ^^ [" => "] ^^ pp_expr table env' body
 
 and pp_pattern table ids env p : code =
-  let cons r = function
-    | [] -> [pp_cons table r]
-    | l -> call [pp_cons table r] l
+  let cons r l =
+    if is_inline_custom r then custom_app (pp_cons table r) l
+    else match l with [] -> [pp_cons table r] | l -> call [pp_cons table r] l
   in
   match p with
   | Pusual r -> cons r (List.map (fun id -> [Id.to_string id]) ids)
@@ -459,6 +652,14 @@ let pp_logical_ind table p =
    ^ String.concat " " (Array.to_list (Array.map Id.to_string p.ip_consnames))]
 
 let pp_enum table ~name ~ntv p : code =
+  let kw =
+    if GlobRef.Set.mem p.ip_typename_ref.glob !error_types then begin
+      if ntv > 0 || Array.length p.ip_types = 0 then
+        CErrors.user_err Pp.(str "The error type " ++ str name ++
+                             str " of a raise function must be non-empty and have no type parameters.");
+      "pub(all) suberror "
+    end else "pub(all) enum "
+  in
   let cons i tys =
     let c = Common.pp_global table Cons p.ip_consnames_ref.(i) in
     match tys with
@@ -466,8 +667,8 @@ let pp_enum table ~name ~ntv p : code =
     | _ -> c ^ "(" ^ String.concat ", " (List.map (pp_type table) tys) ^ ")"
   in
   let cs = Array.to_list (Array.mapi cons p.ip_types) in
-  if List.is_empty cs then ["pub(all) enum " ^ name ^ generics ntv ^ " {}"]
-  else ["pub(all) enum " ^ name ^ generics ntv ^ " {"] @ indent 2 cs @ ["}"]
+  if List.is_empty cs then [kw ^ name ^ generics ntv ^ " {}"]
+  else [kw ^ name ^ generics ntv ^ " {"] @ indent 2 cs @ ["}"]
 
 let pp_ind table ind : code list =
   Array.to_list ind.ind_packets |> List.filter_map (fun p ->
@@ -505,10 +706,51 @@ let pp_tdecl table r l t : code =
       let rhs = if t == Taxiom then pp_type table t ^ " // AXIOM TO BE REALIZED" else pp_type table t in
       ["pub type " ^ name ^ generics (List.length l) ^ " = " ^ rhs]
 
+(* Type parameters, with the trait bounds required by the dictionaries
+   ([Extract MoonBit Trait]) occurring in [t]. *)
+let bounded_generics t =
+  let n = type_maxvar t in
+  if n = 0 then "" else
+    let bounds = Array.make (n + 1) [] in
+    let rec walk = function
+      | Tglob (r, l) ->
+        (match Mbt_table.find_trait r.glob, l with
+         | Some path, Tvar i :: _ when i <= n && not (List.mem path bounds.(i)) ->
+           bounds.(i) <- bounds.(i) @ [path]
+         | _ -> ());
+        List.iter walk l
+      | Tarr (a, b) -> walk a; walk b
+      | _ -> ()
+    in
+    walk t;
+    "[" ^ String.concat ", " (List.init n (fun i ->
+        let v = tvar (i + 1) in
+        match bounds.(i + 1) with
+        | [] -> v
+        | bs -> v ^ " : " ^ String.concat " + " bs)) ^ "]"
+
+(* Body of a raise function: unwrap the Rocq [Result]. *)
+let raise_body (c : code) : code list = [
+  ["let rocq_result = "] ^^ c;
+  ["match rocq_result {"; "  Result::Ok(rocq_v) => rocq_v";
+   "  Result::Err(rocq_e) => raise rocq_e"; "}"] ]
+
 (* A top-level term definition. *)
 let pp_def table r a t : code =
   let name = Common.pp_global table Term r in
-  let gen = generics (type_maxvar t) in
+  let gen = bounded_generics t in
+  (* the bounds are needed by some uses of the dictionaries only *)
+  let attr = if String.contains gen ':' then ["#warnings(\"-unused_trait_bound\")"] else [] in
+  attr @ begin
+  let ret res =
+    if is_raise r then
+      let ok, err = raise_result r (find_shape r) t in
+      pp_type table ok ^ " raise " ^ pp_type table err
+    else pp_type table res
+  in
+  let def_body env e =
+    if is_raise r then raise_body (pp_expr table env e) else [pp_body table env e]
+  in
   if is_custom r then
     match find_shape r with
     | Thunk -> ["pub fn" ^ gen ^ " " ^ name ^ "() -> " ^ pp_type table t ^ " { " ^ find_custom r ^ " }"]
@@ -518,8 +760,8 @@ let pp_def table r a t : code =
     match find_shape r with
     | Value -> (["pub let " ^ name ^ " : " ^ pp_type table t ^ " = "] ^^ pp_expr table env a)
     | Thunk ->
-      ["pub fn" ^ gen ^ " " ^ name ^ "() -> " ^ pp_type table t ^ " "]
-      ^^ block ~force:true [pp_body table env a]
+      ["pub fn" ^ gen ^ " " ^ name ^ "() -> " ^ ret t ^ " "]
+      ^^ block ~force:true (def_body env a)
     | Func n ->
       let ids, body = collect_n_lams n a in
       let ids, env' = push (List.map id_of_mlid ids) env in
@@ -527,8 +769,10 @@ let pp_def table r a t : code =
       let params = List.map2 (fun id ty -> Id.to_string id ^ " : " ^ pp_type table ty)
           (List.rev ids) tys in
       ["pub fn" ^ gen ^ " " ^ name ^ "(" ^ String.concat ", " params ^ ") -> "
-       ^ pp_type table res ^ " "]
-      ^^ block ~force:true [pp_body table env' body]
+       ^ ret res ^ " "]
+      ^^ block ~force:true (def_body env' body)
+    | Extern _ -> []
+  end
 
 let pp_decl_code table d : code list =
   thunk_locals := Id.Set.empty;
@@ -566,6 +810,7 @@ let pp_struct table struc =
   if State.get_phase table == Pre then begin
     need_magic := false; need_any := false; need_lazy := false; type_names := CString.Set.empty;
     shapes := GlobRef.Map.empty; inline_aliases := GlobRef.Map.empty;
+    error_types := GlobRef.Set.empty;
     List.iter (fun (_, sel) -> List.iter register_struct_elem sel) struc
   end;
   let pp_sel (mp, sel) =

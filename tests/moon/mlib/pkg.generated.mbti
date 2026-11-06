@@ -1,0 +1,61 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "rocq2mbt/tests/mlib"
+
+// Values
+pub const MAX : Int = 100
+
+pub fn area(Shape) -> Double
+
+pub fn[A, B] fold_tree(Tree[A], B, (B, A) -> B) -> B
+
+pub fn[A : Compare] insert(Tree[A], A) -> Tree[A]
+
+pub fn make_adder(Int) -> (Int, Int) -> Int
+
+pub let origin : Point
+
+pub fn parse_digit(String) -> Int raise ParseErr
+
+pub fn[A : Pretty] pretty_all(Array[A]) -> String
+
+pub fn with_label(Int, label~ : String, sep? : String) -> String
+
+// Errors
+pub suberror ParseErr {
+  NotADigit(String)
+  EmptyInput
+}
+
+// Types and methods
+pub struct Counter {
+  // private fields
+}
+pub fn Counter::new(Int) -> Self
+pub fn Counter::value(Self) -> Int
+
+pub(all) struct Point {
+  x : Int
+  y : Int
+}
+pub fn Point::norm1(Self) -> Int
+pub fn Point::scale(Self, k~ : Int) -> Self
+pub impl Pretty for Point
+
+pub(all) enum Shape {
+  Circle(Double)
+  Rect(w~ : Double, h~ : Double)
+  Dot
+}
+
+pub(all) enum Tree[A] {
+  Leaf
+  Node(Tree[A], A, Tree[A])
+}
+
+// Type aliases
+
+// Traits
+pub(open) trait Pretty {
+  fn pretty(Self) -> String
+}
+pub impl Pretty for Int

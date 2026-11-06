@@ -1,0 +1,7 @@
+import {
+  "rocq2mbt/mbti2rocq" @lib,
+  "moonbitlang/x/fs",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

@@ -2,6 +2,8 @@ DECLARE PLUGIN "rocq-mbt.plugin"
 
 {
 
+open Stdarg
+
 (* Loading this plugin registers the "MoonBit" extraction language:
      Extraction Language MoonBit. *)
 let () =
@@ -9,3 +11,27 @@ let () =
     (Extraction_plugin.Table.External "MoonBit") Moonbit.moonbit_descr
 
 }
+
+(* Extract MoonBit Function f [n] => "@pkg.g($0, $1)".
+   Realizes [f] by a MoonBit call template.  [$i] stands for the i-th
+   argument that is not a trait dictionary; [n] (default: number of
+   placeholders) is the number of such arguments the call consumes. *)
+VERNAC COMMAND EXTEND MoonBitFunction CLASSIFIED AS SIDEFF
+| [ "Extract" "MoonBit" "Function" global(x) natural_opt(n) "=>" string(s) ]
+  -> { Mbt_table.extract_function x n s }
+END
+
+(* Extract MoonBit Trait C => "@pkg.Trait".
+   The record (class) [C] is the dictionary type of the MoonBit trait. *)
+VERNAC COMMAND EXTEND MoonBitTrait CLASSIFIED AS SIDEFF
+| [ "Extract" "MoonBit" "Trait" global(x) "=>" string(s) ]
+  -> { Mbt_table.extract_trait x s }
+END
+
+(* Extract MoonBit Raise f.
+   [f] returns [Result T E]; it is extracted as a MoonBit function
+   [-> T raise E]. *)
+VERNAC COMMAND EXTEND MoonBitRaise CLASSIFIED AS SIDEFF
+| [ "Extract" "MoonBit" "Raise" global(x) ]
+  -> { Mbt_table.extract_raise x }
+END

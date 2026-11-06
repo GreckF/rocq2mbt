@@ -7,3 +7,8 @@ tests/moon/.mooncakes/
 *.vos
 *.glob
 .*.aux
+mbt/*/_build/
+mbt/*/.mooncakes/
+tests/gen/*.vo
+pkg.generated.mbti
+!tests/moon/mlib/pkg.generated.mbti

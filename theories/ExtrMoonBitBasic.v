@@ -8,3 +8,5 @@ Extract Inductive bool => "Bool" [ "true" "false" ].
 Extract Inductive sumbool => "Bool" [ "true" "false" ].
 Extract Inductive option => "Option" [ "Some" "None" ].
 Extract Inductive unit => "Unit" [ "()" ].
+(* "(,)" is understood by the MoonBit printer as the tuple type/constructor. *)
+Extract Inductive prod => "(,)" [ "(,)" ].
