@@ -1,5 +1,12 @@
 // Extracted from Rocq by rocq2mbt (MoonBit extraction).
 
+pub fn negb(b : Bool) -> Bool {
+  match b {
+    true => false
+    false => true
+  }
+}
+
 pub(all) enum List[A] {
   Nil
   Cons(A, List[A])
@@ -102,3 +109,13 @@ pub fn[A] mconcat(m : Monoid[A], l : List[A]) -> A {
 }
 
 pub let total : Int = mconcat(nat_add_monoid, List::Cons((fn(n) { n + 1 })(0), List::Cons((fn(n) { n + 1 })((fn(n) { n + 1 })(0)), List::Cons((fn(n) { n + 1 })((fn(n) { n + 1 })((fn(n) { n + 1 })(0))), List::Nil))))
+
+pub fn nested_match(b : Bool, c : Bool) -> Int {
+  match (match b {
+    true => c
+    false => negb(c)
+  }) {
+    true => (fn(n) { n + 1 })(0)
+    false => 0
+  }
+}

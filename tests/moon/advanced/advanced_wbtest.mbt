@@ -29,3 +29,9 @@ test "records of functions" {
 test "strings" {
   assert_eq(greeting, "hello \"rocq\" été")
 }
+
+test "match on a match" {
+  assert_eq(nested_match(true, true), 1)
+  assert_eq(nested_match(true, false), 0)
+  assert_eq(nested_match(false, false), 1)
+}

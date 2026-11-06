@@ -67,5 +67,10 @@ Fixpoint mconcat {A} (m : monoid A) (l : list A) : A :=
   match l with nil => unit m | cons x t => op m x (mconcat m t) end.
 Definition total : nat := mconcat nat_add_monoid (cons 1 (cons 2 (cons 3 nil))).
 
+(* a match whose scrutinee is itself a match (MoonBit needs parentheses) *)
+Definition nested_match (b c : bool) : nat :=
+  match (match b with true => c | false => negb c end) with true => 1 | false => 0 end.
+
 Extraction "advanced/advanced.mbt"
-  fact fib max3 eval example_tm from_void ask both partial total greeting.
+  fact fib max3 eval example_tm from_void ask both partial total greeting
+  nested_match.

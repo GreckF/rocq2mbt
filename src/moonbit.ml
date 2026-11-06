@@ -507,6 +507,13 @@ let rec pp_expr table env (e : ml_ast) : code =
       (Array.to_list (Array.map branch pv) @ [pp_expr table env t])
   | MLcase (typ, t, pv) ->
     let scrut = pp_expr table env t in
+    (* MoonBit rejects [match match e {..} {..}] (and a block as subject is
+       ambiguous with the arms): parenthesise such scrutinees. *)
+    let scrut = match t with
+      | MLcase (_, _, pv') when not (is_custom_match pv') -> paren scrut
+      | MLletin _ | MLfix _ -> paren scrut
+      | _ -> scrut
+    in
     let scrut =
       if is_coinductive_type (State.get_table table) typ
       then (need_lazy := true; call ["rocq_force"] [scrut]) else scrut
