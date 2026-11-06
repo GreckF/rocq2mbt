@@ -51,6 +51,10 @@ fn builtin_type(name : String) -> String? {
   match name {
     "Int" | "Int64" | "UInt" | "UInt64" | "Byte" | "Char" | "String" | "Bytes"
     | "Error" | "Double" => Some(name)
+    // since moonc v0.10.x (2026-11), `moon info` prints `Int`/`UInt` by their
+    // canonical names `Int32`/`UInt32`
+    "Int32" => Some("Int")
+    "UInt32" => Some("UInt")
     "Bool" => Some("bool")
     "Unit" => Some("unit")
     "Option" => Some("option")
@@ -871,7 +875,11 @@ fn Gen::emit_trait(self : Gen, name : String, methods : Array[TraitMethod]) -> U
 ///|
 fn ty_head(t : Ty) -> String {
   match t {
-    TName(n, _) => foreign_rocq_name(n)
+    TName(n, _) =>
+      match builtin_type(n) {
+        Some(r) => r
+        None => foreign_rocq_name(n)
+      }
     TTuple(_) => "Tuple"
     TFun(_, _, _) => "Fun"
     TObj(_) => "Obj"

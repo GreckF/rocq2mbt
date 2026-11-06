@@ -34,8 +34,8 @@ command, and troubleshooting.
 - opam: a project-local switch. When the project lives on `/mnt/c`, the switch is actually
   kept in `~/.local/share/rocq2mbt/_opam` (building on the 9p file system is too slow), and
   `_opam` in the project root is a symlink to it.
-- MoonBit toolchain: `~/.moon/bin` (moonc v0.10.8, 2026-08-14). `mbti2rocq` depends on
-  `moonbitlang/x@0.4.50` (newer versions need a newer toolchain).
+- MoonBit toolchain: `~/.moon/bin` (moonc v0.10.20, 2026-11-05; also tested on v0.10.8).
+  `mbti2rocq` depends on `moonbitlang/x@0.5.7`.
 
 ```bash
 bash scripts/setup-opam.sh   # once: create the switch, install OCaml 5.4.1 + rocq-runtime/rocq-core (dev)

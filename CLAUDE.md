@@ -13,10 +13,13 @@
   `Extract MoonBit Function` 模板；trait ↔ Rocq Class + 静态分派桥接（外部调用丢字典、泛型加约束）；
   raise → Result，async 跳过，`Extract MoonBit Raise` 把 Rocq 的 Result 函数提取成 raise 函数。
   遇到新的 extraction 设计问题先问用户。
-- MoonBit 部分在 `mbt/`：`rocqrt`（运行时）和 `mbti2rocq`（工具，依赖 `moonbitlang/x@0.4.50`，
-  因为本机工具链是 2026-08-14 的，0.5.x 不兼容）。改了 `rocqrt` 后 `tests/moon/moon.work` 自动引用。
+- MoonBit 部分在 `mbt/`：`rocqrt`（运行时）和 `mbti2rocq`（工具，依赖 `moonbitlang/x@0.5.7`）。
+  本机工具链 moon 0.1.20261104 / moonc v0.10.20（2026-11-06 升级，旧版备份 `~/.moon.bak-20260814`）。
+  新版 `moon info` 把 `Int`/`UInt` 写成 `Int32`/`UInt32`，mbti2rocq 视为同一类型。
+  改了 `rocqrt` 后 `tests/moon/moon.work` 自动引用。
 - 外部 MoonBit 包的语义只在 MoonBit 侧：生成的 Rocq 文件全是公理，不要往里面加定理。
-- MoonBit 语法要点（moonc v0.10.8 实测）：类型别名是 `type A = B`（不是 `typealias`）；
+- MoonBit 语法要点（moonc v0.10.8 实测，v0.10.20 仍适用；v0.10.20 起 `} derive(..)` 改为类型前的 `#derive(..)`，
+  `impl` 方法隐式提升为普通方法已废弃，rocqrt 中这两类 warning 尚未处理）：类型别名是 `type A = B`（不是 `typealias`）；
   别名右边不能是类型参数；`derive(Show)` 已废弃；`%identity` 在 wasm-gc/native 上不能跨表示转换；
   `try?` 已废弃（用 `try e catch { .. } noraise { .. }`）；十六进制浮点要有小数部分（`0x1.0p3`）；
   跨包结构体不能写 `@pkg.S::{..}` 模式（用自定义 match）；带标签构造子必须带标签构造。

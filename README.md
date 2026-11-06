@@ -29,8 +29,8 @@ Extraction "pkg/out.mbt" my_function.
 - opam：项目本地 switch。项目在 `/mnt/c` 上时，switch 实际放在
   `~/.local/share/rocq2mbt/_opam`（9p 文件系统上编译太慢），项目根的 `_opam`
   是指向它的符号链接。
-- MoonBit 工具链：`~/.moon/bin`（moonc v0.10.8，2026-08-14）。`mbti2rocq` 依赖
-  `moonbitlang/x@0.4.50`（更新的版本需要更新的工具链）。
+- MoonBit 工具链：`~/.moon/bin`（moonc v0.10.20，2026-11-05；也在 v0.10.8 上测试过）。
+  `mbti2rocq` 依赖 `moonbitlang/x@0.5.7`。
 
 ```bash
 bash scripts/setup-opam.sh   # 一次性：建 switch，装 OCaml 5.4.1 + rocq-runtime/rocq-core (dev)

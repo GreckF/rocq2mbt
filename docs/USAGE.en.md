@@ -55,7 +55,7 @@ export ROCQ2MBT=/path/to/rocq2mbt
 | System build tools | gcc, make, git, curl, pkg-config, libgmp-dev | Needed to compile OCaml, zarith and Rocq |
 | OCaml | 5.4.1 (installed automatically by the script) | Other versions ≥ 4.14 usually work too; select one with `OCAML_VERSION` |
 | Rocq | 9.4+alpha, i.e. rocq master (installed automatically by the script) | See the note below |
-| MoonBit toolchain | Tested on moonc v0.10.8 / moon 0.1.20260814 | Only needed to compile and run extracted code and `mbti2rocq` |
+| MoonBit toolchain | Tested on moonc v0.10.20 / moon 0.1.20261104 | Only needed to compile and run extracted code and `mbti2rocq` |
 
 **About the Rocq version.** The plugin depends on Rocq's extensible extraction API (rocq-prover/rocq PR #22541,
 merged 2026-10-05). The git tag `V9.4+alpha` was created on 2026-06-29 and does **not** contain this API.
@@ -168,8 +168,8 @@ For convenience, you can add an alias:
 alias mbti2rocq=$ROCQ2MBT/mbt/mbti2rocq/_build/native/release/build/cmd/main/main.exe
 ```
 
-`mbti2rocq` depends on `moonbitlang/x@0.4.50` (used to read and write files), which is downloaded automatically on the first build.
-Do not upgrade to 0.5.x: 0.5.x requires a newer toolchain than moonc v0.10.8.
+`mbti2rocq` depends on `moonbitlang/x@0.5.7` (used to read and write files), which is downloaded automatically on the first build.
+With an older toolchain such as moonc v0.10.8 (2026-08), use `moonbitlang/x@0.4.50` instead.
 
 ### 3.6 Verify the installation
 
@@ -929,7 +929,7 @@ Some axiom has no extraction implementation. Implement it with `Extract Constant
 or write `Extract Inlined Constant T => "MoonBitType"` for an axiom type.
 
 **Building `mbti2rocq` reports `The type Int32 is undefined`**
-The version of `moonbitlang/x` is too new. `mbt/mbti2rocq/moon.mod` should have `moonbitlang/x@0.4.50`;
+The version of `moonbitlang/x` is newer than the toolchain. Upgrade the toolchain, or on an old toolchain (moonc v0.10.8) set `moonbitlang/x@0.4.50` in `mbt/mbti2rocq/moon.mod`;
 after fixing it, delete the `.mooncakes` directory and rebuild.
 
 **`setup-opam.sh` reports `Directory ... already exists`**

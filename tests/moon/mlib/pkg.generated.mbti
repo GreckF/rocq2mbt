@@ -2,7 +2,7 @@
 package "rocq2mbt/tests/mlib"
 
 // Values
-pub const MAX : Int = 100
+pub const MAX : Int32 = 100
 
 pub fn area(Shape) -> Double
 
@@ -10,15 +10,15 @@ pub fn[A, B] fold_tree(Tree[A], B, (B, A) -> B) -> B
 
 pub fn[A : Compare] insert(Tree[A], A) -> Tree[A]
 
-pub fn make_adder(Int) -> (Int, Int) -> Int
+pub fn make_adder(Int32) -> (Int32, Int32) -> Int32
 
 pub let origin : Point
 
-pub fn parse_digit(String) -> Int raise ParseErr
+pub fn parse_digit(String) -> Int32 raise ParseErr
 
 pub fn[A : Pretty] pretty_all(Array[A]) -> String
 
-pub fn with_label(Int, label~ : String, sep? : String) -> String
+pub fn with_label(Int32, label~ : String, sep? : String) -> String
 
 // Errors
 pub suberror ParseErr {
@@ -30,15 +30,15 @@ pub suberror ParseErr {
 pub struct Counter {
   // private fields
 }
-pub fn Counter::new(Int) -> Self
-pub fn Counter::value(Self) -> Int
+pub fn Counter::new(Int32) -> Self
+pub fn Counter::value(Self) -> Int32
 
 pub(all) struct Point {
-  x : Int
-  y : Int
+  x : Int32
+  y : Int32
 }
-pub fn Point::norm1(Self) -> Int
-pub fn Point::scale(Self, k~ : Int) -> Self
+pub fn Point::norm1(Self) -> Int32
+pub fn Point::scale(Self, k~ : Int32) -> Self
 pub impl Pretty for Point
 
 pub(all) enum Shape {
@@ -58,4 +58,4 @@ pub(all) enum Tree[A] {
 pub(open) trait Pretty {
   fn pretty(Self) -> String
 }
-pub impl Pretty for Int
+pub impl Pretty for Int32

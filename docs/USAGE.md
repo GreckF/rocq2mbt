@@ -55,7 +55,7 @@ export ROCQ2MBT=/path/to/rocq2mbt
 | 系统构建工具 | gcc、make、git、curl、pkg-config、libgmp-dev | 编译 OCaml、zarith、Rocq 需要 |
 | OCaml | 5.4.1（脚本自动安装） | 其他 ≥ 4.14 的版本一般也可以，用 `OCAML_VERSION` 指定 |
 | Rocq | 9.4+alpha，即 rocq master（脚本自动安装） | 见下方说明 |
-| MoonBit 工具链 | 已在 moonc v0.10.8 / moon 0.1.20260814 上测试 | 只在编译、运行提取出的代码和 `mbti2rocq` 时需要 |
+| MoonBit 工具链 | 已在 moonc v0.10.20 / moon 0.1.20261104 上测试 | 只在编译、运行提取出的代码和 `mbti2rocq` 时需要 |
 
 **关于 Rocq 版本。** 插件依赖 Rocq 的可扩展提取 API（rocq-prover/rocq PR #22541，
 2026-10-05 合并）。git tag `V9.4+alpha` 打在 2026-06-29，**不包含**这个 API。
@@ -168,8 +168,8 @@ ls _build/native/release/build/cmd/main/main.exe
 alias mbti2rocq=$ROCQ2MBT/mbt/mbti2rocq/_build/native/release/build/cmd/main/main.exe
 ```
 
-`mbti2rocq` 依赖 `moonbitlang/x@0.4.50`（用它读写文件），第一次构建时会自动下载。
-不要升级到 0.5.x：0.5.x 需要比 moonc v0.10.8 更新的工具链。
+`mbti2rocq` 依赖 `moonbitlang/x@0.5.7`（用它读写文件），第一次构建时会自动下载。
+如果只有 moonc v0.10.8（2026-08）这样较旧的工具链，要改用 `moonbitlang/x@0.4.50`。
 
 ### 3.6 验证安装
 
@@ -929,7 +929,7 @@ Rocq 找不到插件。检查是否设置了
 或者为公理类型写 `Extract Inlined Constant T => "MoonBitType"`。
 
 **编译 `mbti2rocq` 时报 `The type Int32 is undefined`**
-`moonbitlang/x` 的版本太新。`mbt/mbti2rocq/moon.mod` 中应为 `moonbitlang/x@0.4.50`；
+`moonbitlang/x` 的版本比工具链新。升级工具链，或者在旧工具链（moonc v0.10.8）上把 `mbt/mbti2rocq/moon.mod` 改为 `moonbitlang/x@0.4.50`；
 改好后删除 `.mooncakes` 目录重新构建。
 
 **`setup-opam.sh` 报 `Directory ... already exists`**
