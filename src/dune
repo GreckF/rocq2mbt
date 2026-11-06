@@ -1,0 +1,13 @@
+(library
+ (name rocq_mbt_plugin)
+ (public_name rocq-mbt.plugin)
+ (synopsis "MoonBit backend for Rocq extraction")
+ (flags :standard -w -9-27-32)
+ (libraries rocq-runtime.plugins.extraction))
+
+(rule
+ (targets g_moonbit.ml)
+ (deps
+  (:mlg g_moonbit.mlg))
+ (action
+  (run rocq pp-mlg %{deps})))

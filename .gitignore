@@ -1,0 +1,9 @@
+_build/
+_opam
+tests/moon/_build/
+tests/moon/.mooncakes/
+*.vo
+*.vok
+*.vos
+*.glob
+.*.aux

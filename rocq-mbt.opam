@@ -1,0 +1,18 @@
+opam-version: "2.0"
+name: "rocq-mbt"
+version: "dev"
+synopsis: "MoonBit backend for Rocq extraction"
+description: """
+An external Rocq plugin registering the "MoonBit" extraction language
+through the extensible extraction API (rocq-prover/rocq#22541)."""
+license: "LGPL-2.1-only"
+depends: [
+  "ocaml" {>= "4.14"}
+  "dune" {>= "3.21"}
+  "rocq-runtime" {= "dev"}
+  "rocq-core" {= "dev"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  ["dune" "build" "-p" name "-j" jobs]
+]

@@ -1,0 +1,4 @@
+(rocq.theory
+ (name RocqMbt)
+ (package rocq-mbt)
+ (plugins rocq-mbt.plugin))

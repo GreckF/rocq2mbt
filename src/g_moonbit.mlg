@@ -1,0 +1,11 @@
+DECLARE PLUGIN "rocq-mbt.plugin"
+
+{
+
+(* Loading this plugin registers the "MoonBit" extraction language:
+     Extraction Language MoonBit. *)
+let () =
+  Extraction_plugin.Common.register_language
+    (Extraction_plugin.Table.External "MoonBit") Moonbit.moonbit_descr
+
+}
